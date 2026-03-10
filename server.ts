@@ -74,13 +74,10 @@ if (settingsCount.count === 0) {
   insertSetting.run('email', 'dutahivaids.kebumen@gmail.com');
 }
 
-async function startServer() {
-  const app = express();
-  const PORT = 3000;
+const app = express();
 
-  app.use(express.json());
-
-  // --- API Routes ---
+// --- API Routes ---
+app.use(express.json());
 
   // Berita
   app.get('/api/berita', (req, res) => {
@@ -180,23 +177,27 @@ async function startServer() {
     }
   });
 
-  // --- Vite Middleware ---
-  if (process.env.NODE_ENV !== 'production') {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
+  // --- Vite Middleware & Static Serving ---
+  if (process.env.NODE_ENV !== 'production' && process.env.VERCEL !== '1') {
+    import('vite').then(async ({ createServer: createViteServer }) => {
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: 'spa',
+      });
+      app.use(vite.middlewares);
     });
-    app.use(vite.middlewares);
-  } else {
+  } else if (process.env.VERCEL !== '1') {
     app.use(express.static(path.join(__dirname, 'dist')));
     app.get('*', (req, res) => {
       res.sendFile(path.join(__dirname, 'dist', 'index.html'));
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
-}
+  if (process.env.VERCEL !== '1') {
+    const PORT = process.env.PORT || 3000;
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  }
 
-startServer();
+export default app;
